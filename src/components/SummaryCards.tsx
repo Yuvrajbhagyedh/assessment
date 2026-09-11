@@ -1,39 +1,43 @@
-import { formatCurrency, formatPercent } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import type { PortfolioResponse } from "@/lib/types";
+import { PercentPill, signedCurrency, toneClass } from "./GainLoss";
 
+// One panel split into three figures, read left to right as a sentence: what
+// was put in, what it is worth now, and the difference.
 export function SummaryCards({ total }: { total: PortfolioResponse["total"] }) {
-  const isGain = total.gainLoss >= 0;
-
   return (
-    <div className="grid gap-4 sm:grid-cols-3">
-      <Card label="Total Investment" value={formatCurrency(total.investment)} />
-      <Card label="Present Value" value={formatCurrency(total.presentValue)} />
-      <Card
-        label="Overall Gain / Loss"
-        value={formatCurrency(total.gainLoss)}
-        hint={formatPercent(total.gainLossPercent)}
-        tone={isGain ? "text-emerald-600" : "text-red-600"}
-      />
+    <div className="grid divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      <Stat label="Total investment">
+        <p className="text-2xl font-semibold tracking-tight tabular-nums text-slate-900">
+          {formatCurrency(total.investment)}
+        </p>
+      </Stat>
+
+      <Stat label="Present value">
+        <p className="text-2xl font-semibold tracking-tight tabular-nums text-slate-900">
+          {formatCurrency(total.presentValue)}
+        </p>
+      </Stat>
+
+      <Stat label="Overall gain / loss">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p
+            className={`text-2xl font-semibold tracking-tight tabular-nums ${toneClass(total.gainLoss)}`}
+          >
+            {signedCurrency(total.gainLoss)}
+          </p>
+          <PercentPill value={total.gainLossPercent} />
+        </div>
+      </Stat>
     </div>
   );
 }
 
-function Card({
-  label,
-  value,
-  hint,
-  tone = "text-slate-900",
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: string;
-}) {
+function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`mt-1 text-xl font-semibold tabular-nums ${tone}`}>{value}</p>
-      {hint && <p className={`text-sm ${tone}`}>{hint}</p>}
+    <div className="px-5 py-4 sm:py-5">
+      <p className="text-xs font-medium uppercase tracking-wider text-slate-500">{label}</p>
+      <div className="mt-2">{children}</div>
     </div>
   );
 }
