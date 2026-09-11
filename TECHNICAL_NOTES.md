@@ -172,8 +172,13 @@ cannot see is more dangerous than one they have been warned about.
   rows, sector summaries and the header cards.
 - `Intl.NumberFormat("en-IN")` handles the lakh/crore digit grouping, rather
   than formatting rupees by hand.
-- 11 columns do not fit on a phone, so the table scrolls horizontally inside its
-  own container while the summary cards stack.
+- 11 columns of rupee amounts need roughly 1200px, so there are two layouts.
+  At 1280px and wider the full table is shown. Below that each holding is drawn
+  as a card under its sector heading, carrying the same 11 fields as labelled
+  pairs. Both are rendered from the same `sectors` prop and share the same
+  formatting helpers, so there is no second copy of any figure. The alternative
+  was a table that scrolls sideways, which hides the stock name exactly when you
+  need it to read the row.
 - `usePortfolio` holds an `inFlight` ref so a slow response cannot cause polls to
   stack up on each other.
 

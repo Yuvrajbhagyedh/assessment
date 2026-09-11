@@ -6,6 +6,11 @@ fundamentals off the web, and shows gain/loss per stock and per sector. The
 browser checks for new prices every 15 seconds; how often the price behind that
 actually changes depends on which source supplied it (see below).
 
+**Live:** https://assessment-tau-three.vercel.app
+
+The first visit after the site has been idle takes around 10 seconds while it
+fetches a quote for every holding; it is fast from then on.
+
 ## Running it
 
 ```bash
