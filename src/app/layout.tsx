@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 
-// next/font downloads the font at build time and serves it with the app, so
-// visitors' browsers never make a request to Google Fonts.
+// next/font self-hosts the font at build time, so no request to Google Fonts.
 const plexSans = IBM_Plex_Sans({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700"],

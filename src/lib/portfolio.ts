@@ -13,8 +13,6 @@ import type {
 
 const holdings = holdingsJson as Holding[];
 
-// Investment and portfolio weight come straight from the spreadsheet and never
-// change, so they are computed once when the module loads.
 const totalInvestment = holdings.reduce(
   (sum, holding) => sum + holding.purchasePrice * holding.quantity,
   0
@@ -27,16 +25,13 @@ async function loadQuote(holding: Holding, yahooPrice?: PricePoint): Promise<Quo
       holding.exchange
     );
 
-    // Yahoo stays the preferred source. Google's price is only used when Yahoo
-    // did not supply one, so the table still shows something useful.
-    const price = yahooPrice ?? googlePrice;
+    const chosenPrice = yahooPrice ?? googlePrice;
+    const cmpSource = yahooPrice ? "yahoo" : googlePrice ? "google" : undefined;
 
     return {
-      cmp: price?.price,
-      cmpSource: yahooPrice ? "yahoo" : googlePrice ? "google" : undefined,
-      // The timestamp comes from the price itself, so it reports when the source
-      // really produced the number - not when this request happened to run.
-      cmpAsOf: price?.fetchedAt,
+      cmp: chosenPrice?.price,
+      cmpSource,
+      cmpAsOf: chosenPrice?.fetchedAt,
       peRatio: fundamentals.peRatio,
       latestEarnings: fundamentals.latestEarnings,
     };
@@ -65,8 +60,7 @@ function buildRow(holding: Holding, quote: Quote): PortfolioRow {
     error: quote.error,
   };
 
-  // Everything below depends on a live price. Without one we leave the fields
-  // undefined and the table renders a dash rather than a misleading zero.
+  // A missing price stays undefined, never 0: a 0 would read as a 100% loss.
   if (typeof quote.cmp === "number") {
     const presentValue = quote.cmp * holding.quantity;
 
@@ -91,8 +85,7 @@ function groupBySector(rows: PortfolioRow[]): SectorGroup[] {
   return [...groups.entries()].map(([sector, sectorRows]) => {
     const investment = sectorRows.reduce((sum, row) => sum + row.investment, 0);
 
-    // Only sum stocks we actually priced, so a failed scrape does not read as
-    // a loss the size of that holding.
+    // Unpriced holdings count at cost, so they read as flat rather than wiped out.
     const presentValue = sectorRows.reduce(
       (sum, row) => sum + (row.presentValue ?? row.investment),
       0
@@ -112,8 +105,7 @@ function groupBySector(rows: PortfolioRow[]): SectorGroup[] {
 export async function getPortfolio(): Promise<PortfolioResponse> {
   const symbols = holdings.map((h) => toYahooSymbol(h.code, h.exchange));
 
-  // If Yahoo is down entirely we carry on with an empty price map and let the
-  // Google fallback inside loadQuote fill the gap.
+  // Yahoo down: carry on with no prices and let the Google fallback fill in.
   let prices = new Map<string, PricePoint>();
   try {
     prices = await fetchCmp(symbols);
@@ -121,8 +113,7 @@ export async function getPortfolio(): Promise<PortfolioResponse> {
     prices = new Map();
   }
 
-  // Four Google pages in flight at a time. Higher is faster but starts getting
-  // us throttled; lower makes a cold load noticeably slow.
+  // 4 at a time: more gets us throttled, fewer makes the cold load slow.
   const quotes = await mapWithLimit(holdings, 4, (holding) =>
     loadQuote(holding, prices.get(toYahooSymbol(holding.code, holding.exchange)))
   );

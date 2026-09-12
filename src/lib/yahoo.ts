@@ -1,17 +1,10 @@
 import { TtlCache } from "./cache";
 import type { Exchange, PricePoint } from "./types";
 
-// Yahoo has no public/documented API for quotes. The endpoint below is the one
-// their own website calls. Since mid-2023 it refuses requests that do not carry
-// a session cookie plus a matching "crumb" token, so we reproduce that handshake:
-//
-//   1. hit fc.yahoo.com, which sets an A3 cookie (it answers 404 - that's fine,
-//      we only want the Set-Cookie header)
-//   2. exchange that cookie for a crumb
-//   3. send both on every quote request
-//
-// The crumb is valid for a while, so we hold on to it and only re-fetch when a
-// request comes back unauthorised.
+// Yahoo has no public API. This is the endpoint their own site calls, and since
+// mid-2023 it rejects anything without a session cookie plus a matching "crumb"
+// token, so the handshake below reproduces what a browser does. fc.yahoo.com
+// answers 404 on purpose - only its Set-Cookie header matters.
 
 const QUOTE_URL = "https://query2.finance.yahoo.com/v7/finance/quote";
 const CRUMB_URL = "https://query2.finance.yahoo.com/v1/test/getcrumb";
@@ -26,15 +19,12 @@ export function toYahooSymbol(code: string, exchange: Exchange): string {
   return exchange === "NSE" ? `${code}.NS` : `${code}.BO`;
 }
 
-// Yahoo answers all 26 symbols in one small request, so it can comfortably be
-// refreshed at the dashboard's 15 second poll interval. This is the source that
-// actually satisfies the "update every 15 seconds" requirement.
+// One small request covers all 26 symbols, so this source can keep up with the
+// dashboard's 15 second poll.
 const PRICE_TTL_MS = 15_000;
 
-// When Yahoo turns us away - usually 429 Too Many Requests - retrying on the
-// very next poll is pointless: the block lasts minutes, not seconds. We note the
-// time and skip Yahoo entirely until it passes, instead of spending a doomed
-// cookie/crumb handshake every 15 seconds.
+// A 429 from Yahoo lasts minutes, not seconds, so retrying on the next poll just
+// burns a doomed handshake every 15 seconds.
 const FAILURE_BACKOFF_MS = 5 * 60_000;
 
 const priceCache = new TtlCache<PricePoint>(PRICE_TTL_MS);
@@ -51,7 +41,6 @@ async function openSession() {
   const setCookie = cookieRes.headers.get("set-cookie");
   if (!setCookie) throw new Error("Yahoo did not return a session cookie");
 
-  // "A3=abc; Expires=...; Path=/" -> "A3=abc"
   const cookie = setCookie.split(";")[0];
 
   const crumbRes = await fetch(CRUMB_URL, {
@@ -92,14 +81,12 @@ async function requestQuotes(symbols: string[], retry = true): Promise<YahooQuot
   return body.quoteResponse?.result ?? [];
 }
 
-// True while we are deliberately not calling Yahoo after a refusal.
 export function isBackingOff(): boolean {
   return Date.now() < skipUntil;
 }
 
-// Returns a symbol -> price map. Symbols Yahoo could not resolve are simply
-// absent from the map rather than throwing, so one bad ticker cannot take the
-// whole dashboard down.
+// Symbols Yahoo cannot resolve are simply absent from the map, so one bad ticker
+// cannot take the whole dashboard down.
 export async function fetchCmp(symbols: string[]): Promise<Map<string, PricePoint>> {
   const prices = new Map<string, PricePoint>();
 
@@ -112,13 +99,11 @@ export async function fetchCmp(symbols: string[]): Promise<Map<string, PricePoin
 
   if (missing.length === 0) return prices;
 
-  // Yahoo refused us recently. Hand back whatever is still cached and let the
-  // caller fall back to Google, without another wasted round trip.
+  // Refused recently: hand back what is cached and let the caller use Google.
   if (isBackingOff()) return prices;
 
   try {
-    // One request per 20 tickers instead of one per ticker - 26 holdings become
-    // 2 calls, which keeps us well under Yahoo's rate limit.
+    // 20 tickers per request, so 26 holdings cost 2 calls rather than 26.
     for (let i = 0; i < missing.length; i += 20) {
       const chunk = missing.slice(i, i + 20);
       const quotes = await requestQuotes(chunk);

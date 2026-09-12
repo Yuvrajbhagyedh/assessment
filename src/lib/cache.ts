@@ -1,12 +1,6 @@
 type Entry<T> = { value: T; expiresAt: number };
 
-// A plain in-memory cache. The dashboard polls every 15s and each poll would
-// otherwise hit Yahoo and Google 26 times each, which gets the server blocked
-// very quickly. Anything already fetched inside the TTL is reused.
-//
-// This lives in the Node process, so it resets on restart and is not shared
-// between server instances. That is fine for this assignment; in production
-// it would be Redis.
+// In-process only: resets on restart and is not shared between server instances.
 export class TtlCache<T> {
   private store = new Map<string, Entry<T>>();
 
@@ -28,9 +22,7 @@ export class TtlCache<T> {
   }
 }
 
-// Runs the same async function for a list of keys, but only `size` at a time.
-// Firing 26 parallel requests at a scraped endpoint is the fastest way to get
-// rate limited, so requests go out in small batches instead.
+// Batched rather than all at once: 26 parallel requests gets us rate limited.
 export async function mapWithLimit<In, Out>(
   items: In[],
   size: number,

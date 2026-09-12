@@ -10,8 +10,7 @@ export function usePortfolio() {
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Guards against two refreshes overlapping if the server is slow - without
-  // this a 20s response would stack up requests every 15s.
+  // Stops a slow response from letting the next poll pile up on top of it.
   const inFlight = useRef(false);
 
   const load = useCallback(async () => {
@@ -27,8 +26,7 @@ export function usePortfolio() {
       setData((await res.json()) as PortfolioResponse);
       setError(null);
     } catch (err) {
-      // Keep showing the last good data and surface the problem in a banner,
-      // rather than replacing a working table with an error screen.
+      // Leaves the last good data on screen; the page shows a banner instead.
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       inFlight.current = false;

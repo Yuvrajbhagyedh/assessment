@@ -1,6 +1,5 @@
 export type Exchange = "NSE" | "BSE";
 
-// One row as it exists in the source spreadsheet. Nothing here changes at runtime.
 export type Holding = {
   name: string;
   sector: string;
@@ -10,9 +9,8 @@ export type Holding = {
   quantity: number;
 };
 
-// A price together with the moment its source actually handed it to us. The
-// timestamp travels with the number so we never report a price as fresher than
-// it really is.
+// The timestamp travels with the number so a price is never reported as fresher
+// than it really is.
 export type PricePoint = {
   price: number;
   fetchedAt: string;
@@ -20,8 +18,7 @@ export type PricePoint = {
 
 export type PriceSource = "yahoo" | "google";
 
-// What we manage to scrape for a single stock. Every field is optional because
-// any one of the two sources can fail on its own.
+// Every field is optional: either source can fail on its own.
 export type Quote = {
   cmp?: number;
   cmpSource?: PriceSource;

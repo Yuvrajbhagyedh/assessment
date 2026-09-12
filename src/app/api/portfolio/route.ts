@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPortfolio } from "@/lib/portfolio";
 
-// Scraping happens here, on the server. The browser only ever sees this route,
-// so the Yahoo session cookie and crumb never reach client-side code.
+// Scraping runs here, so Yahoo's cookie and crumb never reach the browser.
 export const dynamic = "force-dynamic";
 
 export async function GET() {

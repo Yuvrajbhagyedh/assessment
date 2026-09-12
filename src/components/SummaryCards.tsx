@@ -2,8 +2,6 @@ import { formatCurrency } from "@/lib/format";
 import type { PortfolioResponse } from "@/lib/types";
 import { PercentPill, signedCurrency, toneClass } from "./GainLoss";
 
-// One panel split into three figures, read left to right as a sentence: what
-// was put in, what it is worth now, and the difference.
 export function SummaryCards({ total }: { total: PortfolioResponse["total"] }) {
   return (
     <div className="grid divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:grid-cols-3 sm:divide-x sm:divide-y-0">

@@ -1,21 +1,17 @@
 import { formatCurrency, formatPercent } from "@/lib/format";
 
-// Gains are green, losses red, no price grey. The table rows, the sector rows
-// and the summary panel all go through these helpers, so the rule can never
-// drift between them.
+// Rows, sector rows and the summary all use these, so the rule cannot drift.
 export function toneClass(value: number): string {
   if (value > 0) return "text-emerald-700";
   if (value < 0) return "text-rose-700";
   return "text-slate-600";
 }
 
-// A leading "+" makes a gain as easy to spot as the minus sign on a loss.
 export function signedCurrency(value: number): string {
   return value > 0 ? `+${formatCurrency(value)}` : formatCurrency(value);
 }
 
-// The percentage change as a small pill. The arrow repeats the direction, so it
-// still reads correctly for anyone who can't tell red from green.
+// The arrow repeats the direction for anyone who cannot tell red from green.
 export function PercentPill({ value }: { value: number }) {
   const style =
     value > 0

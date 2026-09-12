@@ -4,9 +4,8 @@ import { GainLoss } from "./GainLoss";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
 import type { PortfolioRow, SectorGroup } from "@/lib/types";
 
-// Header labels may wrap onto two lines when space is tight: "Latest Earnings"
-// is far wider than the numbers under it, and wrapping it is what lets all 11
-// columns fit on a 1280px screen without scrolling.
+// Long labels wrap to two lines when space is tight, which is what lets all 11
+// columns fit at 1280px without scrolling.
 const COLUMNS = [
   "Particulars",
   "Purchase Price",
@@ -21,10 +20,8 @@ const COLUMNS = [
   "Latest Earnings",
 ];
 
-// Eleven columns of rupee amounts need about 1200px. On screens at least 1280px
-// wide (Tailwind's `xl`) they fit, so we show a normal table. Below that, the
-// same data is shown as one card per stock, so nothing ever scrolls sideways.
-// Both layouts render from the same `sectors` prop - only the markup differs.
+// 11 rupee columns need roughly 1200px: table at xl and up, one card per stock
+// below that, so nothing ever scrolls sideways. Both read the same sectors prop.
 export function PortfolioTable({ sectors }: { sectors: SectorGroup[] }) {
   return (
     <>
@@ -74,10 +71,8 @@ export function PortfolioTable({ sectors }: { sectors: SectorGroup[] }) {
   );
 }
 
-// ---------- Wide screens: table ----------
+// Table layout, xl and up
 
-// Each sector opens with a shaded row carrying its totals, lined up under the
-// same columns as the stock rows so they read as subtotals.
 function SectorRow({ sector }: { sector: SectorGroup }) {
   return (
     <tr className="border-t border-slate-200 bg-slate-50">
@@ -128,8 +123,6 @@ function StockRow({ row }: { row: PortfolioRow }) {
   );
 }
 
-// Most numbers are secondary. `strong` marks the ones you actually scan for -
-// today's price and what the holding is worth - so they stand out a little.
 function Cell({ children, strong = false }: { children: React.ReactNode; strong?: boolean }) {
   return (
     <td
@@ -142,7 +135,7 @@ function Cell({ children, strong = false }: { children: React.ReactNode; strong?
   );
 }
 
-// ---------- Narrower screens: cards ----------
+// Card layout, below xl
 
 function SectorHeading({ sector }: { sector: SectorGroup }) {
   return (
@@ -177,8 +170,6 @@ function SectorHeading({ sector }: { sector: SectorGroup }) {
   );
 }
 
-// The same 11 fields as a table row, laid out top to bottom: who and what it's
-// worth now at the top, the gain or loss beneath, the detail underneath that.
 function StockCard({ row }: { row: PortfolioRow }) {
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -225,7 +216,7 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-// ---------- Shared by both layouts ----------
+// Shared by both layouts
 
 function ExchangeCode({ row }: { row: PortfolioRow }) {
   return (

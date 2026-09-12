@@ -2,15 +2,9 @@ import * as cheerio from "cheerio";
 import { TtlCache } from "./cache";
 import type { Exchange, PricePoint } from "./types";
 
-// Google Finance has no API at all, so this reads the public quote page and
-// pulls values out of the HTML.
-//
-// Two things make that survivable:
-//   - the class names on the page are minified and change without warning, so
-//     we never select on them. We find the *label* ("P/E ratio") and read its
-//     sibling instead, which is tied to the visible text rather than the build.
-//   - fundamentals move at most once a quarter, so a 10 minute cache is plenty
-//     and keeps us from hammering Google every 15 seconds.
+// Google Finance has no API at all, so this reads the public quote page. Its
+// class names are minified and regenerated on every deploy, so nothing here
+// selects on them - we match the visible label text instead.
 
 const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
@@ -21,21 +15,10 @@ export type Fundamentals = {
   latestEarnings?: number;
 };
 
-// The price and the fundamentals arrive on the same page, but they go stale at
-// completely different rates, so they are cached separately.
-//
-// P/E and EPS only move when a company reports, so ten minutes costs nothing.
-//
-// The price is different, and this is the honest limit of the fallback:
-// refreshing all 26 quote pages takes about 7 seconds and pulls roughly 10 MB of
-// HTML, because there is no lightweight Google endpoint - only the full page. A
-// 15 second price TTL would therefore mean scraping Google almost continuously,
-// which would get us blocked and make the data *less* fresh, not more. Sixty
-// seconds is the shortest interval this source can sustain.
-//
-// Yahoo has no such problem - one small request covers every symbol - so when
-// Yahoo is reachable the price really does refresh every 15 seconds. See
-// PRICE_TTL_MS in yahoo.ts.
+// Price and fundamentals arrive on the same page but go stale at very different
+// rates, so they are cached separately. There is no lightweight Google price
+// endpoint - refreshing all 26 full pages costs ~7s and ~10MB - so 60s is the
+// shortest interval this source can sustain without getting blocked.
 const PRICE_TTL_MS = 60_000;
 const FUNDAMENTALS_TTL_MS = 10 * 60_000;
 
@@ -59,16 +42,13 @@ function toNumber(raw: string | undefined): number | undefined {
   return Number.isFinite(value) ? value : undefined;
 }
 
-// Everything we want lives inside the page's single <main> element. Scoping to
-// it matters: above <main> Google renders a "market movers" table that also
-// contains price markup, and reading that gave every stock the Nifty value.
+// Above <main>, Google renders a "market movers" table that also contains price
+// markup. Reading that gave every stock the Nifty value.
 function mainSection($: cheerio.CheerioAPI) {
   const main = $("main");
   return main.length > 0 ? main : $("body");
 }
 
-// Finds the stat box whose label is exactly `label` and returns the text of the
-// value sitting next to it.
 function readStat($: cheerio.CheerioAPI, label: string): string | undefined {
   let value: string | undefined;
 
@@ -94,8 +74,6 @@ export type GoogleQuote = {
   fundamentals: Fundamentals;
 };
 
-// Fetches one Google quote page, but only when something it provides has
-// actually expired. If both caches are still warm we never touch the network.
 export async function fetchQuote(
   code: string,
   exchange: Exchange
@@ -121,13 +99,10 @@ export async function fetchQuote(
 
   const $ = cheerio.load(await res.text());
 
-  // The headline price carries a jsname attribute, which survives redesigns far
-  // better than the minified class names around it. Inside <main> the first one
-  // is always the stock being viewed.
+  // jsname attributes survive redesigns far better than minified class names.
   const price = toNumber(mainSection($).find('[jsname="Pdsbrc"]').first().text());
 
-  // Google labels trailing EPS as "EPS" - that is the "latest earnings" figure
-  // the spreadsheet tracks (earnings per share, not total profit).
+  // Google's "EPS" is what the spreadsheet calls Latest Earnings.
   const fundamentals: Fundamentals = {
     peRatio: toNumber(readStat($, "P/E ratio")),
     latestEarnings: toNumber(readStat($, "EPS")),
@@ -135,9 +110,8 @@ export async function fetchQuote(
 
   fundamentalsCache.set(key, fundamentals);
 
-  // Only stamp a new timestamp when Google actually gave us a number. If the
-  // price could not be parsed we keep the previous one - which is either still
-  // within its TTL, or undefined - rather than pretending it just refreshed.
+  // Only stamp a new time when Google actually returned a number, so a failed
+  // parse never looks like a fresh price.
   let point = cachedPrice;
   if (price !== undefined) {
     point = { price, fetchedAt: new Date().toISOString() };

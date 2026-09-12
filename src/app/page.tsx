@@ -6,9 +6,8 @@ import { usePortfolio } from "@/hooks/usePortfolio";
 import { formatTime } from "@/lib/format";
 import type { SectorGroup } from "@/lib/types";
 
-// Yahoo is the preferred price source, but Google is used whenever Yahoo did
-// not supply a price. Each row records which one it actually came from, so the
-// heading reports what really happened instead of assuming Yahoo.
+// Rows record which source their price came from, so the heading never assumes
+// Yahoo when Google actually supplied it.
 function describePriceSource(sectors: SectorGroup[]): string {
   const sources = new Set<string>();
 
@@ -133,8 +132,6 @@ function MetaItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-// Spins only while a request is running, and not at all for people who have
-// asked their system to reduce motion.
 function RefreshIcon({ spinning }: { spinning: boolean }) {
   return (
     <svg
