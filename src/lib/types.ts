@@ -60,5 +60,5 @@ export type PortfolioResponse = {
     gainLossPercent: number;
   };
   updatedAt: string;
-  unpricedHoldings: string[];
+  failedSymbols: string[];
 };

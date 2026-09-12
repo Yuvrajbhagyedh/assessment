@@ -142,8 +142,6 @@ export async function getPortfolio(): Promise<PortfolioResponse> {
       gainLossPercent: ((presentValue - totalInvestment) / totalInvestment) * 100,
     },
     updatedAt: new Date().toISOString(),
-    unpricedHoldings: rows
-      .filter((row) => row.cmp === undefined)
-      .map((row) => row.name),
+    failedSymbols: rows.filter((row) => row.cmp === undefined).map((row) => row.name),
   };
 }

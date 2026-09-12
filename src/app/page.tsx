@@ -79,9 +79,9 @@ export default function Home() {
           </p>
         )}
 
-        {data && data.unpricedHoldings.length > 0 && (
+        {data && data.failedSymbols.length > 0 && (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            No live price for {data.unpricedHoldings.join(", ")}. Those rows are
+            No live price for {data.failedSymbols.join(", ")}. Those rows are
             excluded from the gain/loss totals.
           </p>
         )}
