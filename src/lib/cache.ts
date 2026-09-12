@@ -21,20 +21,3 @@ export class TtlCache<T> {
     this.store.set(key, { value, expiresAt: Date.now() + this.ttlMs });
   }
 }
-
-// Batched rather than all at once: 26 parallel requests gets us rate limited.
-export async function mapWithLimit<In, Out>(
-  items: In[],
-  size: number,
-  fn: (item: In) => Promise<Out>
-): Promise<Out[]> {
-  const results: Out[] = [];
-
-  for (let i = 0; i < items.length; i += size) {
-    const batch = items.slice(i, i + size);
-    const settled = await Promise.all(batch.map(fn));
-    results.push(...settled);
-  }
-
-  return results;
-}

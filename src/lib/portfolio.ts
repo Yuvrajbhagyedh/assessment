@@ -1,5 +1,4 @@
 import holdingsJson from "../../data/holdings.json";
-import { mapWithLimit } from "./cache";
 import { fetchQuote } from "./google";
 import { fetchCmp, toYahooSymbol } from "./yahoo";
 import type {
@@ -12,6 +11,9 @@ import type {
 } from "./types";
 
 const holdings = holdingsJson as Holding[];
+
+// More Google pages in flight than this and it starts throttling us.
+const GOOGLE_BATCH_SIZE = 4;
 
 const totalInvestment = holdings.reduce(
   (sum, holding) => sum + holding.purchasePrice * holding.quantity,
@@ -103,7 +105,9 @@ function groupBySector(rows: PortfolioRow[]): SectorGroup[] {
 }
 
 export async function getPortfolio(): Promise<PortfolioResponse> {
-  const symbols = holdings.map((h) => toYahooSymbol(h.code, h.exchange));
+  const symbols = holdings.map((holding) =>
+    toYahooSymbol(holding.code, holding.exchange)
+  );
 
   // Yahoo down: carry on with no prices and let the Google fallback fill in.
   let prices = new Map<string, PricePoint>();
@@ -113,10 +117,16 @@ export async function getPortfolio(): Promise<PortfolioResponse> {
     prices = new Map();
   }
 
-  // 4 at a time: more gets us throttled, fewer makes the cold load slow.
-  const quotes = await mapWithLimit(holdings, 4, (holding) =>
-    loadQuote(holding, prices.get(toYahooSymbol(holding.code, holding.exchange)))
-  );
+  const quotes: Quote[] = [];
+  for (let i = 0; i < holdings.length; i += GOOGLE_BATCH_SIZE) {
+    const batch = holdings.slice(i, i + GOOGLE_BATCH_SIZE);
+    const loaded = await Promise.all(
+      batch.map((holding) =>
+        loadQuote(holding, prices.get(toYahooSymbol(holding.code, holding.exchange)))
+      )
+    );
+    quotes.push(...loaded);
+  }
 
   const rows = holdings.map((holding, index) => buildRow(holding, quotes[index]));
   const sectors = groupBySector(rows);
@@ -132,6 +142,8 @@ export async function getPortfolio(): Promise<PortfolioResponse> {
       gainLossPercent: ((presentValue - totalInvestment) / totalInvestment) * 100,
     },
     updatedAt: new Date().toISOString(),
-    failedSymbols: rows.filter((row) => row.cmp === undefined).map((row) => row.name),
+    unpricedHoldings: rows
+      .filter((row) => row.cmp === undefined)
+      .map((row) => row.name),
   };
 }

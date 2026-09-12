@@ -46,7 +46,7 @@ src/app/api/portfolio/      the one API route the browser talks to
 src/lib/yahoo.ts            current market price
 src/lib/google.ts           P/E ratio and latest earnings (EPS)
 src/lib/portfolio.ts        joins holdings + live data, does the maths
-src/lib/cache.ts            TTL cache and the concurrency limiter
+src/lib/cache.ts            the TTL cache both data sources use
 src/hooks/usePortfolio.ts   polling from the browser
 src/components/             table, summary cards, gain/loss colouring
 ```

@@ -64,8 +64,8 @@ written naively. That gets blocked quickly. Three things keep it down:
   continuously and would get us blocked.
 - **Batching.** Yahoo accepts 20 symbols per call, so the price fetch is 2
   requests instead of 26.
-- **A concurrency limit.** `mapWithLimit` runs 4 Google fetches at a time rather
-  than firing 26 in parallel. 26 simultaneous connections is the fastest way to
+- **A concurrency limit.** Google pages are fetched 4 at a time rather than
+  firing all 26 in parallel. 26 simultaneous connections is the fastest way to
   look like a bot. The trade-off is a slower cold start — I measured 7.5s for the
   first load, against 0.29s once the cache is warm.
 

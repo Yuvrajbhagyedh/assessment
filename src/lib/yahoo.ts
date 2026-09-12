@@ -14,11 +14,6 @@ const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-// Yahoo tickers: NSE symbols get .NS, BSE scrip codes get .BO
-export function toYahooSymbol(code: string, exchange: Exchange): string {
-  return exchange === "NSE" ? `${code}.NS` : `${code}.BO`;
-}
-
 // One small request covers all 26 symbols, so this source can keep up with the
 // dashboard's 15 second poll.
 const PRICE_TTL_MS = 15_000;
@@ -26,6 +21,13 @@ const PRICE_TTL_MS = 15_000;
 // A 429 from Yahoo lasts minutes, not seconds, so retrying on the next poll just
 // burns a doomed handshake every 15 seconds.
 const FAILURE_BACKOFF_MS = 5 * 60_000;
+
+const SYMBOLS_PER_REQUEST = 20;
+
+// Yahoo tickers: NSE symbols get .NS, BSE scrip codes get .BO
+export function toYahooSymbol(code: string, exchange: Exchange): string {
+  return exchange === "NSE" ? `${code}.NS` : `${code}.BO`;
+}
 
 const priceCache = new TtlCache<PricePoint>(PRICE_TTL_MS);
 
@@ -81,10 +83,6 @@ async function requestQuotes(symbols: string[], retry = true): Promise<YahooQuot
   return body.quoteResponse?.result ?? [];
 }
 
-export function isBackingOff(): boolean {
-  return Date.now() < skipUntil;
-}
-
 // Symbols Yahoo cannot resolve are simply absent from the map, so one bad ticker
 // cannot take the whole dashboard down.
 export async function fetchCmp(symbols: string[]): Promise<Map<string, PricePoint>> {
@@ -100,12 +98,12 @@ export async function fetchCmp(symbols: string[]): Promise<Map<string, PricePoin
   if (missing.length === 0) return prices;
 
   // Refused recently: hand back what is cached and let the caller use Google.
-  if (isBackingOff()) return prices;
+  if (Date.now() < skipUntil) return prices;
 
   try {
-    // 20 tickers per request, so 26 holdings cost 2 calls rather than 26.
-    for (let i = 0; i < missing.length; i += 20) {
-      const chunk = missing.slice(i, i + 20);
+    // Batched by symbol count, so 26 holdings cost 2 calls rather than 26.
+    for (let i = 0; i < missing.length; i += SYMBOLS_PER_REQUEST) {
+      const chunk = missing.slice(i, i + SYMBOLS_PER_REQUEST);
       const quotes = await requestQuotes(chunk);
       const fetchedAt = new Date().toISOString();
 

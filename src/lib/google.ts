@@ -10,7 +10,7 @@ const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-export type Fundamentals = {
+type Fundamentals = {
   peRatio?: number;
   latestEarnings?: number;
 };
@@ -69,7 +69,7 @@ function readStat($: cheerio.CheerioAPI, label: string): string | undefined {
   return value;
 }
 
-export type GoogleQuote = {
+type GoogleQuote = {
   price?: PricePoint;
   fundamentals: Fundamentals;
 };
@@ -100,7 +100,7 @@ export async function fetchQuote(
   const $ = cheerio.load(await res.text());
 
   // jsname attributes survive redesigns far better than minified class names.
-  const price = toNumber(mainSection($).find('[jsname="Pdsbrc"]').first().text());
+  const scrapedPrice = toNumber(mainSection($).find('[jsname="Pdsbrc"]').first().text());
 
   // Google's "EPS" is what the spreadsheet calls Latest Earnings.
   const fundamentals: Fundamentals = {
@@ -112,11 +112,11 @@ export async function fetchQuote(
 
   // Only stamp a new time when Google actually returned a number, so a failed
   // parse never looks like a fresh price.
-  let point = cachedPrice;
-  if (price !== undefined) {
-    point = { price, fetchedAt: new Date().toISOString() };
-    priceCache.set(key, point);
+  let pricePoint = cachedPrice;
+  if (scrapedPrice !== undefined) {
+    pricePoint = { price: scrapedPrice, fetchedAt: new Date().toISOString() };
+    priceCache.set(key, pricePoint);
   }
 
-  return { price: point, fundamentals };
+  return { price: pricePoint, fundamentals };
 }
